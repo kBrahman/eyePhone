@@ -26,7 +26,6 @@ keystoreProperties.load(rootProject.file("keystore.properties").newDataInputStre
 def id = localProperties.getProperty('id')
 def s = file(localProperties['dart_config_path']).readLines().find { it.startsWith('const IP') }.split('=')[1]
 def ip = s.substring(2, s.length()-2)
-print(ip)
 apply plugin: 'com.android.application'
 apply plugin: 'com.google.gms.google-services'
 apply plugin: 'kotlin-android'
