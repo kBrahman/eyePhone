@@ -1,0 +1,36 @@
+name: eye_phone
+description: Home security cam
+publish_to: 'none'
+version: 1.0.2+3
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.6
+  flutter_webrtc: ^0.9.47
+  firebase_core: ^2.24.2
+  cloud_firestore: ^4.13.6
+  shared_preferences: ^2.2.2
+  permission_handler: ^11.1.0
+  qr_flutter: ^4.1.0
+  mobile_scanner: ^3.5.5
+  device_info_plus: ^9.1.1
+  share_plus: ^7.2.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_launcher_icons: ^0.13.1
+  flutter_lints: ^3.0.1
+
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path_android: "assets/launcher.png"
+  image_path_ios: "assets/launcher_ios.png"
+  min_sdk_android: 21
+
+flutter:
+  uses-material-design: true
