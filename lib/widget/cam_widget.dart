@@ -94,7 +94,8 @@ class CamWidget extends StatelessWidget {
                       child: Row(children: [
                         const Expanded(child: Text("Or, share the link with your 'monitor' phone")),
                         IconButton(
-                            onPressed: () => Share.share('https://$IP/?camId=${data.qr}', subject: 'Camera link'),
+                            onPressed: () =>
+                                Share.share('https://eye-phone.top/?camId=${data.qr}', subject: 'Camera link'),
                             icon: const Icon(Icons.share))
                       ]))
                 ])),
