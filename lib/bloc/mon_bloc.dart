@@ -5,33 +5,33 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:device_info_plus/device_info_plus.dart';
 import 'package:eye_phone/util.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
-import 'app/app_event.dart';
-import 'app/git_ignored_config.dart';
 
 class MonBloc {
   static const _TAG = 'MonBloc';
   final bool isLocal;
   RTCVideoRenderer? renderer;
   final String? id;
+  bool openNow;
   final ctr = StreamController<MonEvent>.broadcast();
   MonData? data;
   WebSocket? _ws;
   RTCPeerConnection? pc;
+  var connecting = false;
 
-  MonBloc({required this.isLocal, this.renderer, this.id});
+  MonBloc({required this.isLocal, this.renderer, this.id, this.openNow = false});
 
   Stream<MonData> getStream() async* {
+    appLog(_TAG, 'get stream');
     final sp = await SharedPreferences.getInstance();
     data ??= MonData(
         state: isLocal ? MonState.offline : MonState.loading,
         name: isLocal ? "This device" : sp.getString('${id!}_$NAME') ?? '');
     yield data!;
-    if (!isLocal && _ws == null) _getRemoteStream(id!, sp);
+    if (!isLocal && !connecting && _ws == null) _getRemoteStream(id!, sp).whenComplete(() => connecting = false);
+    connecting = true;
     await for (final e in ctr.stream)
       switch (e) {
         case SetMonState(state: final s):
@@ -39,7 +39,7 @@ class MonBloc {
           yield data = data!.copyWith(state: s);
           break;
         case SetMonName(name: final n):
-          appLog(_TAG, 'set name:$n');
+          appLog(_TAG, 'set name:$n, hc:$hashCode');
           data = data?.copyWith(name: n);
           sp.setString('${id!}_$NAME', n);
       }
@@ -90,13 +90,14 @@ class MonBloc {
       final offer = await pc!.createOffer();
       navigator.mediaDevices.getUserMedia({'audio': true, 'video': false}).then(
           (localStream) => localStream.getTracks().forEach((track) => pc?.addTrack(track, localStream)));
-      await for (final e in (_ws = await WebSocket.connect('ws://$IP/ws',
+      await for (final e in (_ws = await WebSocket.connect(getURL(),
           headers: {CAM_ID: camId, ID: peerId, DESC: Uri.encodeComponent(offer.sdp!), NAME: await name}))) {
         appLog(_TAG, 'event:$e');
         final map = jsonDecode(e);
         final type = map[TYPE];
         switch (type) {
           case ANSWER:
+            appLog(_TAG, 'answer hc:$hashCode');
             final desc = Uri.decodeComponent(map[DESC]);
             pc?.setLocalDescription(offer);
             pc?.setRemoteDescription(RTCSessionDescription(desc, type));
@@ -120,12 +121,12 @@ class MonBloc {
             break;
           case DISCONNECTED_BROADCAST:
             ctr.add(const SetMonState(MonState.disconnected));
-            break;
         }
       }
       if (_ws?.closeCode == CAMERA_OFFLINE) ctr.add(const SetMonState(MonState.offline));
-    } catch (e) {
+    } on SocketException catch (e) {
       appLog(_TAG, 'exc:$e');
+      ctr.add(const SetMonState(MonState.server_down));
     }
   }
 }
@@ -144,7 +145,7 @@ class MonData {
   }
 }
 
-enum MonState { loading, live, offline, turned_off, disconnected }
+enum MonState { loading, live, offline, turned_off, disconnected, server_down }
 
 sealed class MonEvent {
   const MonEvent();

@@ -48,7 +48,9 @@ class MonItemWidget extends StatelessWidget {
                                       ? 'OFFLINE'
                                       : state == MonState.turned_off
                                           ? 'TURNED OFF'
-                                          : 'DISCONNECTED',
+                                          : state == MonState.server_down
+                                              ? 'SERVER IS DOWN'
+                                              : 'DISCONNECTED',
                                   style: const TextStyle(color: Colors.white))),
                       Positioned(
                           left: 8,

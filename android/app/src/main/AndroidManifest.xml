@@ -12,11 +12,11 @@
         android:icon="@mipmap/launcher_icon"
         android:label="eyePhone">
         <activity
-            android:name=".MainActivity"
+            android:name="io.flutter.embedding.android.FlutterActivity"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:exported="true"
             android:hardwareAccelerated="true"
-            android:launchMode="singleTop"
+            android:launchMode="singleInstance"
             android:theme="@style/LaunchTheme"
             android:windowSoftInputMode="adjustResize">
             <meta-data
@@ -36,6 +36,7 @@
                 <data android:scheme="http" />
                 <data android:scheme="https" />
                 <data android:host="eye-phone.top" />
+                <data android:pathPrefix="/" />
             </intent-filter>
         </activity>
 

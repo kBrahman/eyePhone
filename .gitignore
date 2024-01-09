@@ -45,3 +45,4 @@ app.*.map.json
 /android/keystore.properties
 /assets/
 /lib/firebase_options.dart
+/android/app/src/release/AndroidManifest.xml

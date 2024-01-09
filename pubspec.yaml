@@ -11,13 +11,15 @@ dependencies:
   cupertino_icons: ^1.0.6
   flutter_webrtc: ^0.9.47
   firebase_core: ^2.24.2
-  cloud_firestore: ^4.13.6
+  cloud_firestore: ^4.14.0
   shared_preferences: ^2.2.2
   permission_handler: ^11.1.0
   qr_flutter: ^4.1.0
   mobile_scanner: ^3.5.5
   device_info_plus: ^9.1.1
   share_plus: ^7.2.1
+  app_links: ^3.5.0
+  flutter_bloc: ^8.0.0
 
 dev_dependencies:
   flutter_test:

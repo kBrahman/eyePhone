@@ -1,4 +1,5 @@
-// ignore_for_file: avoid_print, constant_identifier_names
+// ignore_for_file: avoid_print, constant_identifier_names, curly_braces_in_flow_control_structures
+import 'dart:ffi';
 import 'dart:io';
 import 'dart:math';
 import 'dart:ui';
@@ -34,7 +35,12 @@ const closeColor = Color(0xFFECDEFD);
 
 appLog(tag, msg) => print('$tag:$msg');
 
-String generateRandomString(int len) => String.fromCharCodes(List.generate(len, (index) => Random().nextInt(33) + 89));
+String generateRandomString(int len) => String.fromCharCodes(List.generate(len, (index) {
+      final random = Random();
+      var i = random.nextInt(33);
+      while (i == 92) i = random.nextInt(33);
+      return i + 89;
+    }));
 
 Future<RTCPeerConnection> createPC(needVideo) async {
   final turnServers = TURNS.map((e) => 'turn:$e:3478');
@@ -60,3 +66,5 @@ Future<String> get name async {
           ? (await deviceInfo.iosInfo).model
           : throw 'unimpl';
 }
+
+String getURL() => IP == '192.168.43.83' ? 'ws://$IP/ws' : 'wss://$IP/ws';

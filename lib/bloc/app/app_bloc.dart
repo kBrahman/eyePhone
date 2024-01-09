@@ -5,7 +5,9 @@ import 'dart:convert';
 import 'dart:core';
 import 'dart:io';
 
+import 'package:app_links/app_links.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:eye_phone/manager/deep_link_manager.dart';
 import 'package:eye_phone/util.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -20,6 +22,11 @@ class AppBloc {
   final ctr = StreamController<AppEvent>();
   WebSocket? _ws;
   final pcs = <String, RTCPeerConnection>{};
+
+  AppBloc(DeepLinkManager manager) {
+    manager.init(ctr);
+    appLog(_TAG, 'init');
+  }
 
   Stream<AppData> getStream(int w, int h) async* {
     try {
@@ -76,8 +83,10 @@ class AppBloc {
             else {
               appLog(_TAG, 'turned off, mons:${data.mons}');
               data.renderer?.srcObject = null;
-              final locBloc = data.mons.first;
-              if (locBloc.isLocal) locBloc.ctr.add(const SetMonState(MonState.turned_off));
+              if (data.mons.isNotEmpty) {
+                final locBloc = data.mons.first;
+                if (locBloc.isLocal) locBloc.ctr.add(const SetMonState(MonState.turned_off));
+              }
               data.renderer?.dispose();
               subscription?.cancel();
               yield data = data.copyWith(state: CamState.off, liveSpan: 0, live: false);
@@ -89,11 +98,14 @@ class AppBloc {
             yield data = data.copyWith(state: CamState.cam);
             data.mons.first.ctr.add(const SetMonState(MonState.offline));
             break;
-          case AddCam(id: final id):
-            yield data..mons.add(MonBloc(isLocal: false, id: id));
+          case AddCam(id: final id, andOpen: final v):
+            appLog(_TAG, 'add cam id:$id');
+            yield data..mons.add(MonBloc(isLocal: false, id: id, openNow: v));
             break;
           case DeleteMon(index: final i):
+            appLog(_TAG, 'del mon at $i');
             yield data..mons.removeAt(i);
+            appLog(_TAG, 'removed mon at $i');
             sp.setStringList(PEERS, data.mons.map((m) => m.id).whereType<String>().toList(growable: false));
             break;
           case StopTimer(stop: final v):
@@ -110,7 +122,7 @@ class AppBloc {
     final localRenderer = RTCVideoRenderer();
     await localRenderer.initialize();
     localRenderer.srcObject = await _initStream(needAudio, w, h);
-    appLog(_TAG, 'got stream');
+    appLog(_TAG, 'get stream');
     var camId = sp.getString(CAM_ID);
     appLog(_TAG, 'cam id from sp:$camId');
     if (camId == null) {
@@ -180,8 +192,7 @@ class AppBloc {
     if (_ws != null)
       _sendWSMSg({TYPE: ONLINE_BROADCAST});
     else
-      await for (final e
-          in await WebSocket.connect('ws://$IP/ws', headers: {CAM_ID: camId, NAME: await name}).then((ws) {
+      await for (final e in await WebSocket.connect(getURL(), headers: {CAM_ID: camId, NAME: await name}).then((ws) {
         _ws = ws;
         _sendWSMSg({TYPE: ONLINE_BROADCAST});
         return ws;

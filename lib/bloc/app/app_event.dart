@@ -22,11 +22,14 @@ class Turn extends AppEvent {
 
 class AddCam extends AppEvent {
   final String id;
+  final bool andOpen;
 
-  const AddCam({required this.id});
+  const AddCam({required this.id, this.andOpen = false});
 }
 
-class ShowCam extends AppEvent {}
+class ShowCam extends AppEvent {
+  const ShowCam();
+}
 
 class RequestPermission extends AppEvent {}
 

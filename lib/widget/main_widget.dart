@@ -8,9 +8,9 @@ import 'package:flutter/material.dart';
 
 class MainWidget extends StatelessWidget {
   static const _TAG = 'MainWidget';
-  final _bloc = AppBloc();
+  final AppBloc _bloc;
 
-  MainWidget({super.key});
+  const MainWidget(this._bloc, {super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +28,7 @@ class MainWidget extends StatelessWidget {
                           builder: (ctx, snap) {
                             final data = snap.data;
                             appLog(_TAG, 'data:$data');
-                            return TabBarView(children: [MonListWidget(data!,_bloc), CamWidget(data, _bloc)]);
+                            return TabBarView(children: [MonListWidget(data!, _bloc), CamWidget(data, _bloc)]);
                           }))),
               const TabBar(tabs: [Tab(text: 'Mon'), Tab(text: 'Cam')])
             ])));

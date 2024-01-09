@@ -3,6 +3,7 @@
 import 'dart:math';
 
 import 'package:eye_phone/bloc/app/app_bloc.dart';
+import 'package:eye_phone/bloc/mon_bloc.dart';
 import 'package:eye_phone/util.dart';
 import 'package:eye_phone/widget/mon_widget.dart';
 import 'package:flutter/material.dart';
@@ -63,7 +64,11 @@ class MonListWidget extends StatelessWidget {
                 itemBuilder: (ctx, i) {
                   var lastProg = .0;
                   appLog(_TAG, 'item builder');
+                  final mon = _data.mons[i];
+                  if (mon.openNow) WidgetsBinding.instance.addPostFrameCallback((_) => _openMon(ctx, i, mon));
+                  mon.openNow = false;
                   return Dismissible(
+                      key: ValueKey(mon.id),
                       dismissThresholds: const {DismissDirection.endToStart: 1.0},
                       onUpdate: (det) {
                         if (det.direction == DismissDirection.endToStart &&
@@ -72,30 +77,27 @@ class MonListWidget extends StatelessWidget {
                         lastProg = det.progress;
                       },
                       confirmDismiss: (dir) => showDialog(
-                              context: ctx,
-                              builder: (c) => AlertDialog(
-                                      title: const Text('Delete monitor'),
-                                      content: const Text('Are you sure you want to delete this monitor?'),
-                                      actions: [
-                                        TextButton(
-                                            onPressed: () => Navigator.of(c).pop(true), child: const Text('YES')),
-                                        TextButton(
-                                            onPressed: () => Navigator.of(c).pop(false), child: const Text('NO'))
-                                      ])).then((value) {
-                            if (value) _bloc.ctr.add(DeleteMon(i));
-                            return value;
-                          }),
+                          context: ctx,
+                          builder: (c) => AlertDialog(
+                                  title: const Text('Delete monitor'),
+                                  content: const Text('Are you sure you want to delete this monitor?'),
+                                  actions: [
+                                    TextButton(onPressed: () => Navigator.of(c).pop(true), child: const Text('YES')),
+                                    TextButton(onPressed: () => Navigator.of(c).pop(false), child: const Text('NO'))
+                                  ])),
                       background: const Align(
                           alignment: Alignment.centerLeft,
                           child:
                               Padding(padding: EdgeInsets.only(left: 9), child: Icon(Icons.delete, color: Colors.red))),
                       onDismissed: (dir) => _bloc.ctr.add(DeleteMon(i)),
-                      key: ValueKey(i),
                       child: GestureDetector(
-                          onTap: () => Navigator.of(ctx)
-                              .push(MaterialPageRoute(builder: (c) => Hero(tag: i, child: MonWidget(_data.mons[i])))),
+                          onTap: () => _openMon(ctx, i, mon),
                           child: Hero(tag: i, child: MonItemWidget(_data.mons[i]))));
                 }));
+  }
+
+  Future<dynamic> _openMon(BuildContext ctx, int i, MonBloc mon) {
+    return Navigator.of(ctx).push(MaterialPageRoute(builder: (c) => Hero(tag: i, child: MonWidget(mon))));
   }
 
   int _getAxisCount(double w) => w < 768 ? 2 : 3;
