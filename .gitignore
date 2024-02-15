@@ -46,3 +46,4 @@ app.*.map.json
 /assets/
 /lib/firebase_options.dart
 /android/app/src/release/AndroidManifest.xml
+/app-release.aab
