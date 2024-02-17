@@ -1,7 +1,6 @@
-// ignore_for_file: constant_identifier_names
+// ignore_for_file: constant_identifier_names, unused_field
 
 import 'package:eye_phone/repo/app_repo.dart';
-import 'package:eye_phone/util/util.dart';
 import 'package:eye_phone/widget/cam_widget.dart';
 import 'package:eye_phone/widget/mon_list_widget.dart';
 import 'package:flutter/material.dart';
@@ -12,7 +11,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../cubit/cam_cubit.dart';
 import '../cubit/main_cubit.dart';
 import '../cubit/mon_list_cubit.dart';
-import 'auth_widget.dart';
 
 class MainWidget extends StatelessWidget {
   static const _TAG = 'MainWidget';
@@ -22,14 +20,12 @@ class MainWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    appLog(_TAG, 'build');
     return RepositoryProvider(
         create: (c) => AppRepo(_sp),
         child: BlocProvider(
             create: (mainCubCtx) => MainCubit(mainCubCtx.read<AppRepo>()),
             child: BlocBuilder<MainCubit, AppState>(builder: (ctx, state) {
               if (state.canPop) WidgetsBinding.instance.addPostFrameCallback((_) => SystemNavigator.pop());
-              appLog(_TAG, 'bloc builder');
               return DefaultTabController(
                   length: 2,
                   child: Scaffold(
@@ -60,8 +56,7 @@ class MainWidget extends StatelessWidget {
                                     padding: EdgeInsets.only(left: 30, right: 30),
                                     child:
                                         Text('REFRESH', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15))))
-                          ])),
-                        AppStatus.auth => const AuthWidget()
+                          ]))
                       }));
             })));
   }

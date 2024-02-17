@@ -39,8 +39,6 @@ class MainCubit extends Cubit<AppState> {
     emit(state.copyWith(appStatus: inetOk ? AppStatus.list : AppStatus.no_internet));
   }
 
-  auth() => emit(state.copyWith(appStatus: AppStatus.auth));
-
   closeWS() => _repo.close().then((ws) => emit(state.copyWith(canPop: true)));
 
   void setPhysics(ScrollPhysics? physics) => emit(state.copyWith(physics: physics));
@@ -57,4 +55,4 @@ class AppState {
       AppState(appStatus: appStatus ?? this.appStatus, canPop: canPop ?? this.canPop, physics: physics);
 }
 
-enum AppStatus { no_internet, list, auth }
+enum AppStatus { no_internet, list }

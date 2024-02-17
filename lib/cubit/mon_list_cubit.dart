@@ -1,16 +1,14 @@
 // ignore_for_file: constant_identifier_names
 
-import 'dart:io';
 
 import 'package:app_links/app_links.dart';
-import 'package:eye_phone/cubit/subs_cubit.dart';
 import 'package:eye_phone/repo/app_repo.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../util/util.dart';
 import 'mon_cubit.dart';
 
-class MonListCubit extends Cubit<MonListState> {
+class MonListCubit extends Cubit<MonListState> implements Observer {
   static const _TAG = 'MonListCubit';
   final AppRepo _repo;
 
@@ -25,6 +23,7 @@ class MonListCubit extends Cubit<MonListState> {
         _saveMons();
       }
     });
+    _repo.register(this);
   }
 
   addCam(String? camId) {
@@ -43,6 +42,11 @@ class MonListCubit extends Cubit<MonListState> {
 
   _init() => emit(
       state.copyWith(mons: _repo.getStringListFromSp(PEERS).map((id) => MonCubit(peerId: id, repo: _repo)).toList()));
+
+  @override
+  onData(Map<String, dynamic> map) {
+    if (map[TYPE] == IS_SIGNED_IN) emit(state.copyWith());
+  }
 }
 
 class MonListState {

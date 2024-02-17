@@ -39,7 +39,9 @@ class MonCubit extends Cubit<MonState> implements Observer {
     appLog(_TAG, 'on data:$map');
     final type = map[TYPE] as String;
     // start of broadcast section
-    if (type == CONNECTED)
+    if (type == IS_SIGNED_IN)
+      emit(state.copyWith());
+    else if (type == CONNECTED)
       repo.send({TYPE: GET_CAM_STATUS, PEER_ID: peerId});
     else if (type == ENABLE || type == DISABLE) {
       appLog(_TAG, 'notify enable disable');

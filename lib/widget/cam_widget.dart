@@ -24,10 +24,10 @@ class CamWidget extends StatelessWidget {
     final orientation = mediaQueryData.orientation;
     final windowHeight = mediaQueryData.size.height;
     appLog(_TAG, 'window height:$windowHeight');
-    RepositoryProvider.of<AppRepo>(context).notify({TYPE: DISABLE});
+    final repo = RepositoryProvider.of<AppRepo>(context);
+    repo.notify({TYPE: DISABLE});
+    final cubit = BlocProvider.of<CamCubit>(context);
     return BlocBuilder<CamCubit, CamState>(builder: (ctx, state) {
-      final cubit = BlocProvider.of<CamCubit>(ctx);
-      final screenNotifier = ValueNotifier(true);
       return Scaffold(
           floatingActionButton: state.camStatus == CamStatus.cam
               ? Column(mainAxisSize: MainAxisSize.min, children: [
@@ -49,6 +49,8 @@ class CamWidget extends StatelessWidget {
           appBar: _hideBarInCamWidget(orientation, windowHeight)
               ? null
               : AppBar(title: const Text('Camera', style: TextStyle(color: Colors.deepPurple)), actions: [
+                  if (repo.getBoolFromSp(IS_SIGNED_IN) ?? false)
+                    IconButton(onPressed: () {}, icon: const Icon(Icons.person, color: Colors.deepPurple)),
                   state.live
                       ? StreamBuilder<int>(
                           initialData: cubit.time,

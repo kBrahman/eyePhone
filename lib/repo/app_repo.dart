@@ -15,11 +15,11 @@ class AppRepo extends WidgetsBindingObserver {
   final SharedPreferences _sp;
   final _observers = <Observer>[];
   late final WebSocket _webSocket;
+  ProductDetails? productDetails;
 
   AppRepo(this._sp) {
     _ws();
     _inApp();
-    appLog(_TAG, 'app repo init');
   }
 
   Future<String> getCamId() async {
@@ -52,7 +52,6 @@ class AppRepo extends WidgetsBindingObserver {
       WebSocket.connect(getURL(), headers: {CAM_ID: await getCamId()}).then(_onConnected).onError(_onError);
 
   _onConnected(WebSocket ws) async {
-    appLog(_TAG, 'ws connected');
     _webSocket = ws;
     ws.pingInterval = const Duration(seconds: 99);
     notify({TYPE: CONNECTED});
@@ -63,18 +62,16 @@ class AppRepo extends WidgetsBindingObserver {
   }
 
   void notify(map) {
-    appLog(_TAG, 'observers:$_observers');
     for (final o in _observers) o.onData(map);
   }
 
   void register(Observer observer) {
     _observers.add(observer);
-    appLog(_TAG, 'registered observer:$observer, hc:${observer.hashCode}');
   }
 
   void send(data) => _webSocket.add(jsonEncode(data));
 
-  void setBoolToSp(String key, bool value) => _sp.setBool(key, value);
+  Future<bool> saveBoolToSp(String key, bool value) => _sp.setBool(key, value);
 
   FutureOr _onError(Object error, StackTrace stackTrace) {
     appLog(_TAG, 'ws error:$error');
@@ -83,8 +80,14 @@ class AppRepo extends WidgetsBindingObserver {
   Future close() => _webSocket.close(WebSocketStatus.normalClosure);
 
   Future<void> _inApp() async {
+    InAppPurchase.instance.queryProductDetails({'eye_premium'}).then((det) {
+      productDetails = det.productDetails.single;
+    }).onError((error, stackTrace) => appLog(_TAG, 'in app err:$error'));
     await for (final p in InAppPurchase.instance.purchaseStream) appLog(_TAG, 'on purchase:$p');
   }
+
+  void subscribe() =>
+      InAppPurchase.instance.buyNonConsumable(purchaseParam: PurchaseParam(productDetails: productDetails!));
 }
 
 abstract class Observer {

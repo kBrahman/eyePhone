@@ -30,11 +30,13 @@ class MonListWidget extends StatelessWidget {
           floatingActionButton: FloatingActionButton(
               onPressed: () async => state.mons.isEmpty || (repo.getBoolFromSp(IS_PREMIUM) ?? false)
                   ? cubit.addCam(await _showQrScanWidget(ctx))
-                  : showModalBottomSheet(context: context, builder: (ctx) => SubsWidget(repo)),
+                  : showModalBottomSheet(
+                      isScrollControlled: true, context: context, builder: (ctx) => SubsWidget(repo)),
               child: const Icon(Icons.qr_code)),
-          appBar: AppBar(
-              title: const Text('Monitors', style: TextStyle(color: Colors.deepPurple)),
-              actions: [IconButton(onPressed: () => context.read<MainCubit>().auth(), icon: const Icon(Icons.login))]),
+          appBar: AppBar(title: const Text('Monitors', style: TextStyle(color: Colors.deepPurple)), actions: [
+            if (repo.getBoolFromSp(IS_SIGNED_IN) ?? false)
+              IconButton(onPressed: () {}, icon: const Icon(Icons.person, color: Colors.deepPurple))
+          ]),
           body: state.loading
               ? const Center(child: CircularProgressIndicator())
               : GridView.builder(

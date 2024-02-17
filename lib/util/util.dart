@@ -11,7 +11,8 @@ import '../widget/subs_widget.dart';
 import 'git_ignored_config.dart';
 
 const amber = Color(0xFFECB805);
-
+const IS_SIGNED_IN = 'is_signed_in';
+const USER = 'user';
 const _TAG = 'util';
 const CAM_ID = 'cam_id';
 const PATH_CAM = 'cam';
@@ -82,4 +83,3 @@ Future<String> get name => DeviceInfoPlugin().deviceInfo.then((m) => m is IosDev
 String getURL() => IP == 'eye-phone.top' ? 'wss://$IP/ws' : 'ws://$IP/ws';
 
 String getName(String peerId) => peerId.substring(peerId.indexOf('_') + 1);
-

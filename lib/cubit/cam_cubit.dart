@@ -53,7 +53,7 @@ class CamCubit extends Cubit<CamState> implements Observer {
 
   setQrVisible(bool visible) {
     emit(state.copyWith(qrVisible: visible));
-    _repo.setBoolToSp(QR_VISIBLE, visible);
+    _repo.saveBoolToSp(QR_VISIBLE, visible);
   }
 
   void goLive() async {
@@ -83,7 +83,7 @@ class CamCubit extends Cubit<CamState> implements Observer {
     emit(on
         ? await _initQrAndVideo(_w!, _h!, true)
         : state.copyWith(camStatus: CamStatus.off, live: false, renderer: null));
-    _repo.setBoolToSp(CAM_ON, on);
+    _repo.saveBoolToSp(CAM_ON, on);
     appLog(_TAG, 'turned on:$on');
   }
 
@@ -128,6 +128,9 @@ class CamCubit extends Cubit<CamState> implements Observer {
     final type = map[TYPE];
     final peerId = map[PEER_ID];
     switch (type) {
+      case IS_SIGNED_IN:
+        emit(state.copyWith());
+        break;
       case TURN_ON_OFF:
         if (state.camStatus == CamStatus.off)
           turn(on: true).whenComplete(() => emit(state.copyWith(live: true)));
