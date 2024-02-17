@@ -1,7 +1,7 @@
 name: eye_phone
 description: Home security cam
 publish_to: 'none'
-version: 2024.02.15+5
+version: 2024.02.18+6
 
 environment:
   sdk: '>=3.2.0 <4.0.0'
