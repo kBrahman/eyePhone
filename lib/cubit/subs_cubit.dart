@@ -1,56 +1,75 @@
 // ignore_for_file: constant_identifier_names, curly_braces_in_flow_control_structures
 
 import 'dart:async';
+import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 
 import '../repo/app_repo.dart';
 import '../util/util.dart';
 
-class SubsCubit extends Cubit<SubsState> {
+class SubsCubit extends Cubit<SubsState> implements Observer {
   static const _TAG = 'PremiumCubit';
   final AppRepo _repo;
   final TextEditingController loginCtr = TextEditingController();
   final TextEditingController smsCtr = TextEditingController();
   String? _verId;
+  int? _resendToken;
+  final bool _signInOnly;
 
-  SubsCubit(this._repo) : super(const SubsState());
-
-  bool isPremium() => _repo.getBoolFromSp(IS_PREMIUM) ?? false;
-
-  upgrade() {
-    if (state.loading) return;
-    if (_repo.getBoolFromSp(IS_SIGNED_IN) ?? false)
-      _buy();
-    else
-      emit(state.copyWith(uiState: SubsUiState.sign_in));
+  SubsCubit(this._repo, this._signInOnly)
+      : super(SubsState(uiState: _signInOnly ? SubsUiState.sign_in : SubsUiState.offer)) {
+    // _repo.register(this);
+    if (Platform.isAndroid)
+      InAppPurchase.instance
+          .isAvailable()
+          .then((v) =>
+              v ? InAppPurchase.instance.queryProductDetails({SUBS_ID}) : emit(state.copyWith(storeAvailable: false)))
+          .then((dynamic det) {
+        if (det is ProductDetailsResponse) emit(state.copyWith(price: det.productDetails.single.price));
+      });
   }
 
-  void _buy() => InAppPurchase.instance.isAvailable().then((v) {
-        appLog(_TAG, 'store avail:$v');
-        if (!v)
-          emit(state.copyWith(storeAvailable: false));
-        else
-          _repo.subscribe();
-      });
+  void upgrade() => _repo.getBoolFromSp(IS_SIGNED_IN) ?? false
+      ? _repo.subscribe()
+      : emit(state.copyWith(uiState: SubsUiState.sign_in));
 
   void phoneSignIn() {
     appLog(_TAG, 'phoneSignIn');
     emit(state.copyWith(uiState: SubsUiState.sign_in_phone));
   }
 
-  void emailSignIn() {}
+  Future<void> googleSignIn() async {
+    GoogleSignIn googleSignIn = GoogleSignIn(scopes: <String>['email']);
+    var login = googleSignIn.currentUser?.email;
+    try {
+      if (login == null && (login = (await googleSignIn.signInSilently())?.email) == null) {
+        final acc = await googleSignIn.signIn();
+        login = acc?.email;
+      }
+      if (login == null)
+        emit(state.copyWith(googleErr: true));
+      else
+        _reg(login);
+    } on PlatformException catch (e) {
+      if (e.message == 'network_error') {
+        // globalSink.add(GlobalEvent.ERR_CONN);
+        // return data.copyWith(progress: false);
+      }
+      appLog(_TAG, 'google sign in exception:$e');
+    }
+  }
 
-  void googleSignIn() {}
-
-  void appleSignIn() {}
+  Future<void> appleSignIn() => FirebaseAuth.instance
+      .signInWithProvider(AppleAuthProvider())
+      .then((cred) => cred.user?.uid == null ? emit(state.copyWith(appleErr: true)) : _reg(cred.user!.uid));
 
   void phoneSignInNext() {
     final login = loginCtr.text;
@@ -62,21 +81,25 @@ class SubsCubit extends Cubit<SubsState> {
     }
   }
 
-  void verify() => loginCtr.text.length < 5 || loginCtr.text.length > 25
+  void verifyPhone() => loginCtr.text.length < 5 || loginCtr.text.length > 25
       ? emit(state.copyWith(loginInvalid: true))
       : FirebaseAuth.instance
           .verifyPhoneNumber(
+              timeout: const Duration(minutes: 2),
               phoneNumber: _correctIfNeeded(),
-              verificationCompleted: _autoComplete,
+              verificationCompleted: _complete,
               verificationFailed: _failed,
               codeSent: _smsSent,
+              forceResendingToken: _resendToken,
               codeAutoRetrievalTimeout: _timeOut)
           .whenComplete(_startTimer)
-          .whenComplete(() => emit(state.copyWith(loading: true, uiState: SubsUiState.sms)));
+          .whenComplete(
+              () => emit(state.copyWith(uiState: SubsUiState.sms, timerTime: TIME_OUT.toString(), canResend: false)));
 
-  _smsSent(String id, int? tok) {
+  void _smsSent(String id, int? tok) {
     _verId = id;
-    appLog(_TAG, 'sms sent');
+    _resendToken = tok;
+    appLog(_TAG, 'sms sent, tok:$tok');
   }
 
   void _timeOut(vId) {
@@ -91,19 +114,17 @@ class SubsCubit extends Cubit<SubsState> {
 
   void toState(SubsUiState uiState) => emit(state.copyWith(uiState: uiState));
 
-  void _autoComplete(PhoneAuthCredential cred) => FirebaseFirestore.instance
-      .doc('$USER/${loginCtr.text}')
-      .set({})
-      .whenComplete(() => _repo.saveBoolToSp(IS_SIGNED_IN, true))
-      .whenComplete(() {
-        smsCtr.text = cred.smsCode!;
-        emit(state.copyWith(uiState: SubsUiState.offer, loading: false));
-      });
+  void _complete(PhoneAuthCredential cred) {
+    smsCtr.text = cred.smsCode!;
+    appLog(_TAG, 'completed');
+    _reg(loginCtr.text);
+    emit(state.copyWith(canResend: false));
+  }
 
   FutureOr<void> _startTimer() => Timer.periodic(const Duration(seconds: 1), (timer) {
-        const timeOut = 83;
-        final stop = timer.tick > timeOut || state.uiState == SubsUiState.offer;
-        emit(state.copyWith(timerTime: stop ? null : (timeOut - timer.tick).toString(), loading: !stop));
+        final stop = timer.tick == TIME_OUT;
+        if (!isClosed)
+          emit(state.copyWith(timerTime: stop ? null : (TIME_OUT - timer.tick).toString(), canResend: stop));
         if (stop) timer.cancel();
       });
 
@@ -113,23 +134,45 @@ class SubsCubit extends Cubit<SubsState> {
           ? emit(state.copyWith(smsWrong: true))
           : _sendSms();
 
-  _sendSms() async {
+  void _sendSms() async {
     appLog(_TAG, '_sendSms');
+    emit(state.copyWith(loading: true));
     try {
       await FirebaseAuth.instance
           .signInWithCredential(PhoneAuthProvider.credential(verificationId: _verId!, smsCode: smsCtr.text));
-      emit(state.copyWith(uiState: SubsUiState.offer, loading: false));
-      _buy();
+      appLog(_TAG, 'sign in success');
+      _reg(loginCtr.text);
     } on FirebaseAuthException catch (e) {
-      if (e.code == 'invalid-verification-code') emit(state.copyWith(smsWrong: true));
+      if (e.code == 'invalid-verification-code') emit(state.copyWith(smsWrong: true, loading: false));
       appLog(_TAG, 'exception:${e.code}');
     }
   }
 
-  _correctIfNeeded() {
+  String _correctIfNeeded() {
     if (loginCtr.text.startsWith('7') && loginCtr.text.length == 10) loginCtr.text = '7${loginCtr.text}';
     return '+${loginCtr.text}';
   }
+
+  @override
+  onData(Map<String, dynamic> map) {
+    appLog(_TAG, 'on data:$map');
+    if (map[TYPE] == PURCHASE_SUCCESS) {
+      emit(state.copyWith(popModalSheet: true));
+    }
+  }
+
+  void _reg(String login) => FirebaseFirestore.instance.doc('$USER/$login').get().then((doc) async => doc.exists
+      ? _sync()
+      : FirebaseFirestore.instance
+          .doc('$USER/$login')
+          .set({CAM_ID: await _repo.getCamId(), PEERS: _repo.getStringListFromSp(PEERS)}).whenComplete(() {
+          _repo
+            ..saveBoolToSp(IS_SIGNED_IN, true)
+            ..savStringToSp(LOGIN, login);
+          emit(state.copyWith(popModalSheet: true));
+        }));
+
+  void _sync() {}
 }
 
 class SubsState {
@@ -139,6 +182,11 @@ class SubsState {
   final bool loginInvalid;
   final String? timerTime;
   final bool smsWrong;
+  final bool popModalSheet;
+  final String? price;
+  final bool canResend;
+  final bool appleErr;
+  final bool googleErr;
 
   const SubsState(
       {this.storeAvailable = true,
@@ -146,9 +194,14 @@ class SubsState {
       this.uiState = SubsUiState.offer,
       this.loginInvalid = false,
       this.timerTime,
-      this.smsWrong = false});
+      this.smsWrong = false,
+      this.popModalSheet = false,
+      this.price,
+      this.canResend = true,
+      this.appleErr = false,
+      this.googleErr = false});
 
-  get mustAuth => uiState == SubsUiState.sign_in || uiState == SubsUiState.sign_in_phone || uiState == SubsUiState.sms;
+  get keyboardPadding => uiState == SubsUiState.sign_in_phone || uiState == SubsUiState.sms;
 
   SubsState copyWith(
           {bool? storeAvailable,
@@ -156,14 +209,24 @@ class SubsState {
           SubsUiState? uiState,
           bool? loginInvalid,
           String? timerTime,
-          bool? smsWrong}) =>
+          bool? smsWrong,
+          bool? popModalSheet,
+          String? price,
+          bool? canResend,
+          bool? appleErr,
+          bool? googleErr}) =>
       SubsState(
           storeAvailable: storeAvailable ?? this.storeAvailable,
           loading: loading ?? this.loading,
           uiState: uiState ?? this.uiState,
           loginInvalid: loginInvalid ?? false,
           timerTime: timerTime,
-          smsWrong: smsWrong ?? this.smsWrong);
+          smsWrong: smsWrong ?? this.smsWrong,
+          popModalSheet: popModalSheet ?? false,
+          price: price ?? this.price,
+          canResend: canResend ?? this.canResend,
+          appleErr: appleErr ?? false,
+          googleErr: googleErr ?? false);
 }
 
-enum SubsUiState { offer, sign_in, sign_in_phone, sms }
+enum SubsUiState { offer, sign_in, sign_in_phone, sms, email_sent }

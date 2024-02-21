@@ -15,7 +15,6 @@ class AppRepo extends WidgetsBindingObserver {
   final SharedPreferences _sp;
   final _observers = <Observer>[];
   late final WebSocket _webSocket;
-  ProductDetails? productDetails;
 
   AppRepo(this._sp) {
     _ws();
@@ -44,7 +43,7 @@ class AppRepo extends WidgetsBindingObserver {
 
   List<String> getStringListFromSp(String key) => (_sp.getStringList(PEERS) ?? []);
 
-  void saveStringListToSp(String key, List<String> list) => _sp.setStringList(key, list);
+  Future<bool> saveStringListToSp(String key, List<String> list) => _sp.setStringList(key, list);
 
   String? getStringFromSp(String key) => _sp.getString(key);
 
@@ -80,14 +79,27 @@ class AppRepo extends WidgetsBindingObserver {
   Future close() => _webSocket.close(WebSocketStatus.normalClosure);
 
   Future<void> _inApp() async {
-    InAppPurchase.instance.queryProductDetails({'eye_premium'}).then((det) {
-      productDetails = det.productDetails.single;
-    }).onError((error, stackTrace) => appLog(_TAG, 'in app err:$error'));
-    await for (final p in InAppPurchase.instance.purchaseStream) appLog(_TAG, 'on purchase:$p');
+    await for (final p in InAppPurchase.instance.purchaseStream)
+      for (final det in p) {
+        appLog(_TAG, 'on purchase, err:${det.error}, pending:${det.pendingCompletePurchase}, status:${det.status}');
+        if (det.status == PurchaseStatus.purchased || det.status == PurchaseStatus.restored) {
+          if (det.pendingCompletePurchase)
+            InAppPurchase.instance.completePurchase(det).whenComplete(_onPurchaseSuccess);
+          else
+            _onPurchaseSuccess();
+        }
+      }
   }
 
-  void subscribe() =>
-      InAppPurchase.instance.buyNonConsumable(purchaseParam: PurchaseParam(productDetails: productDetails!));
+  FutureOr<void> _onPurchaseSuccess() =>
+      _sp.setBool(IS_PREMIUM, true).whenComplete(() => notify({TYPE: PURCHASE_SUCCESS})).whenComplete(
+          () async => FirebaseFirestore.instance.doc('$USER/${_sp.getString(LOGIN)}').update({IS_PREMIUM: true}));
+
+  Future<void> subscribe() async => InAppPurchase.instance.buyNonConsumable(
+      purchaseParam: PurchaseParam(
+          productDetails: (await InAppPurchase.instance.queryProductDetails({SUBS_ID})).productDetails.single));
+
+  void savStringToSp(key, String value) => _sp.setString(key, value);
 }
 
 abstract class Observer {

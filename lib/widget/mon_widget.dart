@@ -76,8 +76,7 @@ class MonWidget extends StatelessWidget {
                         ]
                       ]
                     : null,
-                iconTheme: const IconThemeData(color: Colors.deepPurple),
-                title: Text(getName(_cubit.peerId), style: const TextStyle(color: Colors.deepPurple))),
+                title: Text(getName(_cubit.peerId), style: const TextStyle(fontSize: 20))),
             body: monStatus == MonStatus.loading
                 ? const Center(child: CircularProgressIndicator())
                 : monStatus == MonStatus.live

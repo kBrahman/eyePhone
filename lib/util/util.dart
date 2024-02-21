@@ -7,10 +7,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 
+import '../repo/app_repo.dart';
 import '../widget/subs_widget.dart';
 import 'git_ignored_config.dart';
 
 const amber = Color(0xFFECB805);
+const TIME_OUT = 72;
+const OPEN_PROFILE = 'open_profile';
+const SUBS_ID = 'eye_premium';
 const IS_SIGNED_IN = 'is_signed_in';
 const USER = 'user';
 const _TAG = 'util';
@@ -25,7 +29,6 @@ const ICE = 'ice';
 const PEERS = 'peers';
 const OFFER = 'offer';
 const GET_CAM_STATUS = 'get_cam_status';
-const CAM_STATUS = 'cam_status';
 const LIVE = 'live';
 const CONNECTED = 'connected';
 const ANSWER = 'answer';
@@ -35,8 +38,6 @@ const VIDEO = 'video';
 const AUDIO = 'audio';
 const ENABLE = 'enable';
 const DISABLE = 'disable';
-const OFFLINE_BROADCAST = 'offline_broadcast';
-const ONLINE_BROADCAST = 'online_broadcast';
 const TURNED_OFF = 'turned_off';
 const TURN_ON_OFF = 'turn_on_off';
 const IS_PREMIUM = 'is_premium';
@@ -45,9 +46,11 @@ const PRODUCT = 'product';
 const SWITCH_CAM = 'switch_cam';
 const BRIGHTNESS = 'brightness';
 const SIREN = 'siren';
+const LOGIN = 'login';
 const TORCH = 'torch';
 const VALUE = 'value';
 const SCALE = 'scale';
+const PURCHASE_SUCCESS = 'purchase_success';
 
 appLog(tag, msg) => print('$tag:$msg');
 
@@ -83,3 +86,9 @@ Future<String> get name => DeviceInfoPlugin().deviceInfo.then((m) => m is IosDev
 String getURL() => IP == 'eye-phone.top' ? 'wss://$IP/ws' : 'ws://$IP/ws';
 
 String getName(String peerId) => peerId.substring(peerId.indexOf('_') + 1);
+
+Future<void> showSubsBottomSheet(BuildContext context, AppRepo repo, bool signInOnly) => showModalBottomSheet(
+    context: context,
+    builder: (ctx) => SubsWidget(repo, signInOnly),
+    isScrollControlled: true,
+    useRootNavigator: true);

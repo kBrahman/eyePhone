@@ -90,9 +90,11 @@ class CamCubit extends Cubit<CamState> implements Observer {
   void requestPermissions() async {
     final resMap = await [Permission.camera, Permission.microphone].request();
     final statusCam = resMap[Permission.camera]!;
-    final statusMic = resMap[Permission.microphone]!;
     emit(state.copyWith(camStatus: _fromPerm(statusCam)));
-    if (state.camStatus == CamStatus.generating) emit(await _initQrAndVideo(_w!, _h!));
+    if (state.camStatus == CamStatus.generating) {
+      emit(await _initQrAndVideo(_w!, _h!));
+      state.renderer?.srcObject?.getVideoTracks().forEach((_hasTorch));
+    }
   }
 
   Future<MediaStream> _getStream(w, h) => navigator.mediaDevices.getUserMedia({
@@ -128,9 +130,6 @@ class CamCubit extends Cubit<CamState> implements Observer {
     final type = map[TYPE];
     final peerId = map[PEER_ID];
     switch (type) {
-      case IS_SIGNED_IN:
-        emit(state.copyWith());
-        break;
       case TURN_ON_OFF:
         if (state.camStatus == CamStatus.off)
           turn(on: true).whenComplete(() => emit(state.copyWith(live: true)));
@@ -181,7 +180,7 @@ class CamCubit extends Cubit<CamState> implements Observer {
           appLog(_TAG, 'on msg:$map');
           return switch (map[TYPE]) {
             TURN_ON_OFF => turn(on: false),
-            SIREN => toggleSiren(),
+            SIREN => player.state == PlayerState.stopped ? player.resume() : player.stop(),
             TORCH => toggleTorch(),
             SWITCH_CAM => Helper.switchCamera(state.renderer!.srcObject!.getVideoTracks().single),
             BRIGHTNESS => map[VALUE] == null
@@ -237,7 +236,7 @@ class CamCubit extends Cubit<CamState> implements Observer {
         if (v) emit(state.copyWith(isTorchOn: false));
       });
 
-  toggleScreenLight() {
+  void toggleScreenLight() {
     final screenBrightness = ScreenBrightness();
     screenBrightness.current.then((v) async {
       if (v == 0)
@@ -247,8 +246,6 @@ class CamCubit extends Cubit<CamState> implements Observer {
       sendTypeAndValue(BRIGHTNESS, v == 0);
     });
   }
-
-  toggleSiren() => player.state == PlayerState.playing ? player.stop() : player.resume();
 }
 
 class CamState {

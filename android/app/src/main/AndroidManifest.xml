@@ -18,7 +18,7 @@
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:exported="true"
             android:hardwareAccelerated="true"
-            android:launchMode="singleInstance"
+            android:launchMode="singleTask"
             android:resizeableActivity="true"
             android:theme="@style/LaunchTheme"
             android:windowSoftInputMode="adjustResize">
@@ -40,6 +40,19 @@
                 <data android:scheme="https" />
                 <data android:host="eye-phone.top" />
                 <data android:pathPrefix="/" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name="com.aboutyou.dart_packages.sign_in_with_apple.SignInWithAppleCallback"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data android:scheme="signinwithapple" />
+                <data android:path="/callback" />
             </intent-filter>
         </activity>
 

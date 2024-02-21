@@ -24,8 +24,9 @@ dependencies:
   screen_brightness: ^1.0.0
   audioplayers: ^5.2.1
   in_app_purchase: ^3.1.13
-  firebase_auth: ^4.17.4
-
+  firebase_auth: ^4.17.5
+  google_sign_in: ^6.2.1
+  sign_in_with_apple: ^5.0.0
 
 dev_dependencies:
   flutter_test:

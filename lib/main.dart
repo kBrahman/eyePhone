@@ -29,5 +29,10 @@ class App extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => MaterialApp(
-      theme: ThemeData(colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple)), home: MainWidget(_sp));
+      theme: ThemeData(
+          appBarTheme: AppBarTheme.of(context).copyWith(
+              titleTextStyle: const TextStyle(color: Colors.deepPurple, fontSize: 22),
+              iconTheme: const IconThemeData(color: Colors.deepPurple)),
+          colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple)),
+      home: MainWidget(_sp));
 }

@@ -1,6 +1,7 @@
 // ignore_for_file: constant_identifier_names, unused_field
 
 import 'package:eye_phone/repo/app_repo.dart';
+import 'package:eye_phone/util/util.dart';
 import 'package:eye_phone/widget/cam_widget.dart';
 import 'package:eye_phone/widget/mon_list_widget.dart';
 import 'package:flutter/material.dart';
@@ -24,16 +25,16 @@ class MainWidget extends StatelessWidget {
         create: (c) => AppRepo(_sp),
         child: BlocProvider(
             create: (mainCubCtx) => MainCubit(mainCubCtx.read<AppRepo>()),
-            child: BlocBuilder<MainCubit, AppState>(builder: (ctx, state) {
+            child: BlocBuilder<MainCubit, MainState>(builder: (ctx, state) {
               if (state.canPop) WidgetsBinding.instance.addPostFrameCallback((_) => SystemNavigator.pop());
               return DefaultTabController(
                   length: 2,
                   child: Scaffold(
-                      bottomNavigationBar: state.appStatus == AppStatus.list
+                      bottomNavigationBar: state.mainUiState == MainUiState.list
                           ? const TabBar(tabs: [Tab(text: 'Mon'), Tab(text: 'Cam')])
                           : null,
-                      body: switch (state.appStatus) {
-                        AppStatus.list => MultiBlocProvider(
+                      body: switch (state.mainUiState) {
+                        MainUiState.list => MultiBlocProvider(
                               providers: [
                                 BlocProvider(
                                     create: (blocCtx) => MonListCubit(RepositoryProvider.of<AppRepo>(blocCtx))),
@@ -42,10 +43,13 @@ class MainWidget extends StatelessWidget {
                               ],
                               child: PopScope(
                                   canPop: state.canPop,
-                                  onPopInvoked: (did) => state.canPop ? null : ctx.read<MainCubit>().closeWS(),
+                                  onPopInvoked: (didPop) {
+                                    appLog(_TAG, 'on pop, did pop:$didPop');
+                                    state.canPop ? null : ctx.read<MainCubit>().closeWS();
+                                  },
                                   child: TabBarView(
                                       physics: state.physics, children: const [MonListWidget(), CamWidget()]))),
-                        AppStatus.no_internet => Center(
+                        MainUiState.no_internet => Center(
                               child: Column(mainAxisSize: MainAxisSize.min, children: [
                             const Text('No internet access',
                                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),

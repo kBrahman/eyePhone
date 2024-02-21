@@ -1,14 +1,14 @@
 // ignore_for_file: constant_identifier_names
 
-
 import 'package:app_links/app_links.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:eye_phone/repo/app_repo.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../util/util.dart';
 import 'mon_cubit.dart';
 
-class MonListCubit extends Cubit<MonListState> implements Observer {
+class MonListCubit extends Cubit<MonListState> {
   static const _TAG = 'MonListCubit';
   final AppRepo _repo;
 
@@ -20,41 +20,42 @@ class MonListCubit extends Cubit<MonListState> implements Observer {
       appLog(_TAG, 'id from app link:$id');
       if (id != null && !state.mons.any((m) => m.peerId == id)) {
         emit(state..mons.add(MonCubit(peerId: id, repo: _repo)));
-        _saveMons();
+        final mons = state.mons.map((m) => m.peerId).whereType<String>();
+        appLog(_TAG, 'mos:$mons');
+        _saveMons(mons);
       }
     });
-    _repo.register(this);
   }
 
   addCam(String? camId) {
     if (camId == null || state.mons.any((m) => m.peerId == camId)) return;
     emit(state.copyWith(mons: state.mons..add(MonCubit(peerId: camId, repo: _repo)..getState(camId))));
-    _saveMons();
+    _saveMons(state.mons.map((m) => m.peerId).whereType<String>());
   }
 
-  deleteMon(int i) {
+  void deleteMon(int i) {
     emit(state.copyWith(mons: state.mons..removeAt(i)));
-    _saveMons();
+    _saveMons(state.mons.map((m) => m.peerId).whereType<String>());
   }
 
-  void _saveMons() =>
-      _repo.saveStringListToSp(PEERS, state.mons.map((m) => m.peerId).whereType<String>().toList(growable: false));
+  void _saveMons(Iterable<String> mons) => _repo.saveStringListToSp(PEERS, mons.toList(growable: false)).whenComplete(
+      () async => _repo.getBoolFromSp(IS_SIGNED_IN) ?? false
+          ? FirebaseFirestore.instance.doc('$USER/${_repo.getStringFromSp(LOGIN)}').update({PEERS: mons})
+          : null);
 
-  _init() => emit(
+  void _init() => emit(
       state.copyWith(mons: _repo.getStringListFromSp(PEERS).map((id) => MonCubit(peerId: id, repo: _repo)).toList()));
 
-  @override
-  onData(Map<String, dynamic> map) {
-    if (map[TYPE] == IS_SIGNED_IN) emit(state.copyWith());
-  }
+  profile() {}
 }
 
 class MonListState {
   final List<MonCubit> mons;
   final bool loading;
+  final bool openProfile;
 
-  const MonListState({required this.mons, this.loading = true});
+  const MonListState({required this.mons, this.loading = true, this.openProfile = false});
 
-  MonListState copyWith({List<MonCubit>? mons, bool? loading}) =>
-      MonListState(mons: mons ?? this.mons, loading: loading ?? false);
+  MonListState copyWith({List<MonCubit>? mons, bool? loading, bool? openProfile}) =>
+      MonListState(mons: mons ?? this.mons, loading: loading ?? false, openProfile: openProfile ?? this.openProfile);
 }

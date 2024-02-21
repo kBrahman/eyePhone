@@ -1,15 +1,14 @@
 // ignore_for_file: constant_identifier_names, curly_braces_in_flow_control_structures
 
 import 'dart:math';
-import 'package:eye_phone/cubit/subs_cubit.dart';
 import 'package:eye_phone/repo/app_repo.dart';
 import 'package:eye_phone/util/util.dart';
 import 'package:eye_phone/widget/mon_widget.dart';
+import 'package:eye_phone/widget/profile_widget.dart';
 import 'package:eye_phone/widget/subs_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
-import '../cubit/main_cubit.dart';
 import '../cubit/mon_cubit.dart';
 import '../cubit/mon_list_cubit.dart';
 import 'mon_item_widget.dart';
@@ -26,16 +25,19 @@ class MonListWidget extends StatelessWidget {
     return BlocBuilder<MonListCubit, MonListState>(builder: (ctx, state) {
       appLog(_TAG, 'bloc build');
       final cubit = BlocProvider.of<MonListCubit>(ctx);
+      if (state.openProfile) WidgetsBinding.instance.addPostFrameCallback((_) => _openProfile(ctx, repo));
       return Scaffold(
           floatingActionButton: FloatingActionButton(
               onPressed: () async => state.mons.isEmpty || (repo.getBoolFromSp(IS_PREMIUM) ?? false)
                   ? cubit.addCam(await _showQrScanWidget(ctx))
-                  : showModalBottomSheet(
-                      isScrollControlled: true, context: context, builder: (ctx) => SubsWidget(repo)),
+                  : showSubsBottomSheet(context, repo, false),
               child: const Icon(Icons.qr_code)),
-          appBar: AppBar(title: const Text('Monitors', style: TextStyle(color: Colors.deepPurple)), actions: [
-            if (repo.getBoolFromSp(IS_SIGNED_IN) ?? false)
-              IconButton(onPressed: () {}, icon: const Icon(Icons.person, color: Colors.deepPurple))
+          appBar: AppBar(title: const Text('Monitors'), actions: [
+            IconButton(
+                onPressed: () => repo.getBoolFromSp(IS_SIGNED_IN) ?? false
+                    ? _openProfile(context, repo)
+                    : showSubsBottomSheet(context, repo, true),
+                icon: Icon(Icons.person, color: repo.getBoolFromSp(IS_SIGNED_IN) ?? false ? null : Colors.grey))
           ]),
           body: state.loading
               ? const Center(child: CircularProgressIndicator())
@@ -44,7 +46,6 @@ class MonListWidget extends StatelessWidget {
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: _getAxisCount(w)),
                   itemBuilder: (ctx, i) {
                     var lastProg = .0;
-                    appLog(_TAG, 'item builder');
                     final mon = state.mons[i];
                     final bloc = BlocProvider.of<MonListCubit>(ctx);
                     return Dismissible(
@@ -76,6 +77,9 @@ class MonListWidget extends StatelessWidget {
     });
   }
 
+  Future<dynamic> _openProfile(BuildContext context, AppRepo repo) =>
+      Navigator.of(context).push(MaterialPageRoute(builder: (rCtx) => ProfileWidget(repo)));
+
   _openMon(BuildContext ctx, int i, MonCubit cub) {
     appLog(_TAG, 'open mon');
     Navigator.of(ctx).push(MaterialPageRoute(builder: (c) => Hero(tag: i, child: MonWidget(cub))));
@@ -89,13 +93,10 @@ class MonListWidget extends StatelessWidget {
         var detected = false;
         return Scaffold(
             appBar: AppBar(
-                title: const Text('Add Camera', style: TextStyle(color: Colors.deepPurple)),
-                leading: const Icon(Icons.qr_code_outlined, color: Colors.deepPurple),
+                title: const Text('Add Camera'),
+                leading: const Icon(Icons.qr_code_outlined),
                 backgroundColor: const Color(0xFFF6F1FC),
-                actions: [
-                  IconButton(
-                      onPressed: () => Navigator.pop(ctx), icon: const Icon(Icons.close, color: Colors.deepPurple))
-                ]),
+                actions: [IconButton(onPressed: () => Navigator.pop(ctx), icon: const Icon(Icons.close))]),
             body: MobileScanner(
                 onDetect: (cap) {
                   if (detected) return;

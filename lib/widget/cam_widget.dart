@@ -48,9 +48,7 @@ class CamWidget extends StatelessWidget {
               : null,
           appBar: _hideBarInCamWidget(orientation, windowHeight)
               ? null
-              : AppBar(title: const Text('Camera', style: TextStyle(color: Colors.deepPurple)), actions: [
-                  if (repo.getBoolFromSp(IS_SIGNED_IN) ?? false)
-                    IconButton(onPressed: () {}, icon: const Icon(Icons.person, color: Colors.deepPurple)),
+              : AppBar(title: const Text('Camera'), actions: [
                   state.live
                       ? StreamBuilder<int>(
                           initialData: cubit.time,
@@ -59,9 +57,7 @@ class CamWidget extends StatelessWidget {
                               Text(_getTime(snap.data!), style: const TextStyle(color: Colors.red)))
                       : Text(state.camStatus == CamStatus.cam ? 'offline' : 'turned off',
                           style: const TextStyle(color: Colors.grey)),
-                  IconButton(
-                      onPressed: () => cubit.setQrVisible(true),
-                      icon: const Icon(Icons.share, color: Colors.deepPurple))
+                  IconButton(onPressed: () => cubit.setQrVisible(true), icon: const Icon(Icons.share))
                 ]),
           body: _getBody(ctx, state, cubit));
     });
